@@ -3,6 +3,7 @@
 
 WebSocketClient::WebSocketClient()
 {
+    webSocket.enableAutomaticReconnection();
     webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr& msg)
     {
         if (msg->type == ix::WebSocketMessageType::Message)
@@ -39,6 +40,7 @@ WebSocketClient::~WebSocketClient()
 
 void WebSocketClient::connectToServer(const juce::String& serverUrl)
 {
+    lastServerUrl = serverUrl;
     webSocket.setUrl(serverUrl.toStdString());
     webSocket.start();
 }
@@ -53,7 +55,7 @@ void WebSocketClient::createRoom()
 {
     if (!connected)
     {
-        connectToServer();
+        connectToServer(lastServerUrl);
     }
     
     juce::DynamicObject::Ptr obj = new juce::DynamicObject();
@@ -68,12 +70,25 @@ void WebSocketClient::joinRoom(const juce::String& roomCode)
 {
     if (!connected)
     {
-        connectToServer();
+        connectToServer(lastServerUrl);
     }
 
     juce::DynamicObject::Ptr obj = new juce::DynamicObject();
     obj->setProperty("type", "JOIN_ROOM");
     obj->setProperty("roomCode", roomCode.toUpperCase());
+
+    juce::var jsonVar(obj.get());
+    juce::String jsonStr = juce::JSON::toString(jsonVar);
+    webSocket.send(jsonStr.toStdString());
+}
+
+void WebSocketClient::sendDraftActivity(bool isComposing)
+{
+    if (!connected || currentRoomCode.isEmpty()) return;
+
+    juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+    obj->setProperty("type", "DRAFT_ACTIVITY");
+    obj->setProperty("isComposing", isComposing);
 
     juce::var jsonVar(obj.get());
     juce::String jsonStr = juce::JSON::toString(jsonVar);
@@ -154,9 +169,19 @@ void WebSocketClient::handleIncomingMessage(const std::string& messageStr)
             if (onPeerLeft) onPeerLeft(peerId, count);
         });
     }
+    else if (type == "PEER_TYPING")
+    {
+        juce::String peerId = parsed["peerId"].toString();
+        bool isComposing = (bool) parsed["isComposing"];
+        juce::MessageManager::callAsync([this, peerId, isComposing]()
+        {
+            if (onPeerTyping) onPeerTyping(peerId, isComposing);
+        });
+    }
     else if (type == "MIDI_RECEIVED")
     {
         juce::var payload = parsed["payload"];
+        juce::String trackName = payload["trackName"].toString();
         juce::var notesArray = payload["notes"];
         
         std::vector<CapturedMidiNote> receivedNotes;
@@ -174,9 +199,9 @@ void WebSocketClient::handleIncomingMessage(const std::string& messageStr)
             }
         }
 
-        juce::MessageManager::callAsync([this, receivedNotes]()
+        juce::MessageManager::callAsync([this, receivedNotes, trackName]()
         {
-            if (onMidiReceived) onMidiReceived(receivedNotes);
+            if (onMidiReceived) onMidiReceived(receivedNotes, trackName);
         });
     }
     else if (type == "ERROR")

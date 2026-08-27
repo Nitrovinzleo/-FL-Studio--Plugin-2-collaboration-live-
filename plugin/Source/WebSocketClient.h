@@ -16,6 +16,7 @@ public:
 
     void createRoom();
     void joinRoom(const juce::String& roomCode);
+    void sendDraftActivity(bool isComposing);
     void sendMidiValidation(const juce::String& trackName, const std::vector<struct CapturedMidiNote>& notes);
 
     // Callbacks setup
@@ -23,7 +24,8 @@ public:
     std::function<void(const juce::String& roomCode, int peerCount)> onRoomJoined;
     std::function<void(const juce::String& peerId, int peerCount)> onPeerJoined;
     std::function<void(const juce::String& peerId, int peerCount)> onPeerLeft;
-    std::function<void(const std::vector<struct CapturedMidiNote>& notes)> onMidiReceived;
+    std::function<void(const juce::String& peerId, bool isComposing)> onPeerTyping;
+    std::function<void(const std::vector<struct CapturedMidiNote>& notes, const juce::String& trackName)> onMidiReceived;
     std::function<void(const juce::String& errorMsg)> onError;
     std::function<void(bool isConnected)> onConnectionStatusChanged;
 
@@ -34,6 +36,7 @@ private:
     ix::WebSocket webSocket;
     bool connected = false;
     juce::String currentRoomCode = "";
+    juce::String lastServerUrl = "ws://localhost:8080";
 
     void handleIncomingMessage(const std::string& messageStr);
 

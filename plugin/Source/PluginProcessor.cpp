@@ -16,9 +16,9 @@ FLStudioCollabAudioProcessor::FLStudioCollabAudioProcessor()
 #endif
 {
     // Setup WebSocket callback for incoming MIDI patterns from remote collaborator
-    wsClient.onMidiReceived = [this](const std::vector<CapturedMidiNote>& notes)
+    wsClient.onMidiReceived = [this](const std::vector<CapturedMidiNote>& notes, const juce::String& trackName)
     {
-        queueIncomingMidiNotes(notes);
+        queueIncomingMidiNotes(notes, trackName);
     };
 }
 
@@ -69,6 +69,7 @@ void FLStudioCollabAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
         buffer.clear (i, 0, buffer.getNumSamples());
 
     // 1. Capture incoming host MIDI notes from FL Studio for local draft buffer
+    bool notesAdded = false;
     for (const auto metadata : midiMessages)
     {
         auto msg = metadata.getMessage();
@@ -82,7 +83,13 @@ void FLStudioCollabAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
             
             std::lock_guard<std::mutex> lock(midiMutex);
             capturedBuffer.push_back(note);
+            notesAdded = true;
         }
+    }
+
+    if (notesAdded)
+    {
+        wsClient.sendDraftActivity(true);
     }
 
     // 2. Playback incoming MIDI notes received from remote peer
@@ -117,7 +124,7 @@ void FLStudioCollabAudioProcessor::validateAndSendCurrentPattern()
 {
     std::lock_guard<std::mutex> lock(midiMutex);
     
-    // If no real MIDI notes recorded yet during testing, generate sample note for demonstration
+    // If no real MIDI notes recorded yet during testing, generate sample notes
     if (capturedBuffer.empty())
     {
         CapturedMidiNote note1{ 60, 0.8f, 0, 22050 };
@@ -126,14 +133,33 @@ void FLStudioCollabAudioProcessor::validateAndSendCurrentPattern()
         capturedBuffer.push_back(note2);
     }
 
-    wsClient.sendMidiValidation("FL Track Draft", capturedBuffer);
+    wsClient.sendMidiValidation("FL Studio Track Draft", capturedBuffer);
     DBG("[CollabPlugin] Validated and sent " + juce::String(capturedBuffer.size()) + " notes.");
 }
 
-void FLStudioCollabAudioProcessor::queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes)
+void FLStudioCollabAudioProcessor::queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes, const juce::String& trackName)
 {
     std::lock_guard<std::mutex> lock(midiMutex);
     incomingQueue.insert(incomingQueue.end(), notes.begin(), notes.end());
+
+    // Add entry to history
+    ValidatedPatternItem item;
+    item.index = (int) validationHistory.size() + 1;
+    item.timestampStr = juce::Time::getCurrentTime().toString(false, true, true, true);
+    item.trackName = trackName.isEmpty() ? "Piste reçue" : trackName;
+    item.notes = notes;
+
+    validationHistory.push_back(item);
+}
+
+void FLStudioCollabAudioProcessor::replayHistoricalPattern(int historyIndex)
+{
+    std::lock_guard<std::mutex> lock(midiMutex);
+    if (historyIndex >= 0 && historyIndex < (int) validationHistory.size())
+    {
+        const auto& item = validationHistory[(size_t) historyIndex];
+        incomingQueue.insert(incomingQueue.end(), item.notes.begin(), item.notes.end());
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

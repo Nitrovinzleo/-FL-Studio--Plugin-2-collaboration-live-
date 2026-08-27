@@ -24,12 +24,19 @@ private:
 
     juce::TextButton createRoomButton;
     juce::TextButton joinRoomButton;
+    juce::TextButton copyCodeButton;
+
+    juce::Label activityLabel;
+    juce::Label logLabel;
+
+    juce::Label historyLabel;
+    juce::ComboBox historyComboBox;
+    juce::TextButton replayHistoryButton;
 
     juce::TextButton validateButton;
 
-    juce::Label logLabel;
-
     void setupWebSocketCallbacks();
+    void updateHistoryComboBox();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLStudioCollabAudioProcessorEditor)
 };

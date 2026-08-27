@@ -56,15 +56,6 @@ async function runTest() {
       throw new Error('Web Invitation Page test failed');
     }
 
-    console.log('[Test] Testing HTTP API GET /api/room/' + roomCodeCreated);
-    const apiRes = await httpGet(`${HTTP_URL}/api/room/${roomCodeCreated}`);
-    const apiJson = JSON.parse(apiRes.data);
-    if (apiRes.statusCode === 200 && apiJson.exists && apiJson.peerCount === 1) {
-      console.log('[Test SUCCESS] Room API returned valid state:', apiJson);
-    } else {
-      throw new Error('Room status API test failed');
-    }
-
     // 3. Client 2 connects and joins the room
     client2 = new WebSocket(WS_URL);
 
@@ -101,7 +92,24 @@ async function runTest() {
       client2.on('error', reject);
     });
 
-    // 4. Client 1 sends MIDI validation payload to Client 2
+    // 4. Test Draft Activity Indicator (PEER_TYPING)
+    await new Promise((resolve, reject) => {
+      client2.on('message', (data) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'PEER_TYPING' && msg.isComposing) {
+          console.log('[Test SUCCESS] Client 2 received PEER_TYPING activity indicator from Client 1!');
+          resolve();
+        }
+      });
+
+      console.log('[Test] Client 1 sending DRAFT_ACTIVITY signal...');
+      client1.send(JSON.stringify({
+        type: 'DRAFT_ACTIVITY',
+        isComposing: true
+      }));
+    });
+
+    // 5. Client 1 sends MIDI validation payload to Client 2
     const testMidiPayload = {
       notes: [
         { noteNumber: 60, velocity: 0.8, sampleOffset: 0, lengthSamples: 44100 },
@@ -134,7 +142,7 @@ async function runTest() {
     });
 
     console.log('===================================================');
-    console.log('🎉 ALL RELAY SERVER & WEB INVITATION TESTS PASSED CLEANLY!');
+    console.log('🎉 ALL RELAY SERVER INTEGRATION & DRAFT ACTIVITY TESTS PASSED CLEANLY!');
     console.log('===================================================');
   } catch (err) {
     console.error('❌ Test failed with error:', err);

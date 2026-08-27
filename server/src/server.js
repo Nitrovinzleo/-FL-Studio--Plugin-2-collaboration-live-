@@ -2,8 +2,9 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 
 const PORT = process.env.PORT || 8080;
+const ROOM_MAX_INACTIVE_MS = 24 * 60 * 60 * 1000; // 24 Hours
 
-// Room storage: roomCode -> Set of WebSocket clients
+// Room storage: roomCode -> { clients: Set<WebSocket>, lastActivity: number }
 const rooms = new Map();
 // Client metadata map: ws -> { roomCode, clientId }
 const clients = new Map();
@@ -26,15 +27,31 @@ function generateClientId() {
 }
 
 function broadcastToRoom(roomCode, senderWs, messageData) {
-  const roomClients = rooms.get(roomCode);
-  if (!roomClients) return;
+  const roomObj = rooms.get(roomCode);
+  if (!roomObj) return;
 
-  for (const client of roomClients) {
+  roomObj.lastActivity = Date.now();
+  for (const client of roomObj.clients) {
     if (client !== senderWs && client.readyState === 1) { // WebSocket.OPEN
       client.send(JSON.stringify(messageData));
     }
   }
 }
+
+// Automatic background cleanup of inactive rooms (> 24h)
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, roomObj] of rooms.entries()) {
+    if (now - roomObj.lastActivity > ROOM_MAX_INACTIVE_MS) {
+      console.log(`[x] Expiration 24h: Cleaning up inactive room ${code}`);
+      for (const ws of roomObj.clients) {
+        ws.send(JSON.stringify({ type: 'ROOM_EXPIRED', message: 'Le salon a expiré (24h d\'inactivité).' }));
+        ws.close();
+      }
+      rooms.delete(code);
+    }
+  }
+}, 60 * 60 * 1000); // Check hourly
 
 // HTTP Server handling web invitation page and API routes
 const server = http.createServer((req, res) => {
@@ -51,7 +68,8 @@ const server = http.createServer((req, res) => {
   if (urlParts[1] === 'api' && urlParts[2] === 'room' && urlParts[3]) {
     const code = urlParts[3].toUpperCase();
     const exists = rooms.has(code);
-    const peerCount = exists ? rooms.get(code).size : 0;
+    const roomObj = exists ? rooms.get(code) : null;
+    const peerCount = roomObj ? roomObj.clients.size : 0;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ roomCode: code, exists, peerCount, isFull: peerCount >= 2 }));
     return;
@@ -231,8 +249,7 @@ wss.on('connection', (ws) => {
           code = generateRoomCode();
         }
 
-        const roomSet = new Set([ws]);
-        rooms.set(code, roomSet);
+        rooms.set(code, { clients: new Set([ws]), lastActivity: Date.now() });
         clientInfo.roomCode = code;
 
         ws.send(JSON.stringify({
@@ -256,8 +273,8 @@ wss.on('connection', (ws) => {
           return;
         }
 
-        const roomSet = rooms.get(targetCode);
-        if (roomSet.size >= 2) {
+        const roomObj = rooms.get(targetCode);
+        if (roomObj.clients.size >= 2) {
           ws.send(JSON.stringify({
             type: 'ERROR',
             message: `Le salon '${targetCode}' est complet (2 utilisateurs max).`
@@ -265,7 +282,8 @@ wss.on('connection', (ws) => {
           return;
         }
 
-        roomSet.add(ws);
+        roomObj.clients.add(ws);
+        roomObj.lastActivity = Date.now();
         clientInfo.roomCode = targetCode;
 
         // Notify client who joined
@@ -273,7 +291,7 @@ wss.on('connection', (ws) => {
           type: 'ROOM_JOINED',
           roomCode: targetCode,
           clientId: clientInfo.clientId,
-          peerCount: roomSet.size
+          peerCount: roomObj.clients.size
         }));
 
         // Notify the existing peer in room
@@ -281,10 +299,22 @@ wss.on('connection', (ws) => {
           type: 'PEER_JOINED',
           roomCode: targetCode,
           peerId: clientInfo.clientId,
-          peerCount: roomSet.size
+          peerCount: roomObj.clients.size
         });
 
-        console.log(`[+] Client ${clientId} joined room ${targetCode}. Total peers: ${roomSet.size}`);
+        console.log(`[+] Client ${clientId} joined room ${targetCode}. Total peers: ${roomObj.clients.size}`);
+        break;
+      }
+
+      case 'DRAFT_ACTIVITY': {
+        const currentRoom = clientInfo.roomCode;
+        if (currentRoom && rooms.has(currentRoom)) {
+          broadcastToRoom(currentRoom, ws, {
+            type: 'PEER_TYPING',
+            peerId: clientId,
+            isComposing: !!msg.isComposing
+          });
+        }
         break;
       }
 
@@ -331,11 +361,12 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     const info = clients.get(ws);
     if (info && info.roomCode && rooms.has(info.roomCode)) {
-      const roomSet = rooms.get(info.roomCode);
-      roomSet.delete(ws);
-      console.log(`[-] Client ${info.clientId} left room ${info.roomCode}. Remaining: ${roomSet.size}`);
+      const roomObj = rooms.get(info.roomCode);
+      roomObj.clients.delete(ws);
+      roomObj.lastActivity = Date.now();
+      console.log(`[-] Client ${info.clientId} left room ${info.roomCode}. Remaining: ${roomObj.clients.size}`);
 
-      if (roomSet.size === 0) {
+      if (roomObj.clients.size === 0) {
         rooms.delete(info.roomCode);
         console.log(`[x] Room ${info.roomCode} destroyed (empty).`);
       } else {
@@ -343,7 +374,7 @@ wss.on('connection', (ws) => {
           type: 'PEER_LEFT',
           roomCode: info.roomCode,
           peerId: info.clientId,
-          peerCount: roomSet.size
+          peerCount: roomObj.clients.size
         });
       }
     }

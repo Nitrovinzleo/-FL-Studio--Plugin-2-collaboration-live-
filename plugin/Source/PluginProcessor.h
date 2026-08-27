@@ -15,6 +15,15 @@ struct CapturedMidiNote
     int lengthSamples = 22050;
 };
 
+// Represents a validated historical pattern entry
+struct ValidatedPatternItem
+{
+    int index = 1;
+    juce::String timestampStr;
+    juce::String trackName;
+    std::vector<CapturedMidiNote> notes;
+};
+
 class FLStudioCollabAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -51,7 +60,10 @@ public:
 
     // Collaboration API methods
     void validateAndSendCurrentPattern();
-    void queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes);
+    void queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes, const juce::String& trackName = "Piste reçue");
+    void replayHistoricalPattern(int historyIndex);
+
+    const std::vector<ValidatedPatternItem>& getValidationHistory() const { return validationHistory; }
 
     WebSocketClient& getWebSocketClient() { return wsClient; }
 
@@ -62,6 +74,7 @@ private:
     std::mutex midiMutex;
     std::vector<CapturedMidiNote> capturedBuffer;
     std::vector<CapturedMidiNote> incomingQueue;
+    std::vector<ValidatedPatternItem> validationHistory;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLStudioCollabAudioProcessor)
 };
