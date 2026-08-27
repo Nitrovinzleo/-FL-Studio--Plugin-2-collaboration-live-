@@ -415,7 +415,7 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`====================================================`);
   console.log(`🚀 FL Studio Collaboration Relay Server running on port ${PORT}`);
-  console.log(`🌐 Invitation page available at: http://localhost:${PORT}/join/CODE`);
+  console.log(`🌐 Invitation page available at: http://localhost:${PORT}/join/<CODE_SALON>`);
   console.log(`====================================================`);
 });
 
