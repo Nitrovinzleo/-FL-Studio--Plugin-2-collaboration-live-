@@ -41,6 +41,10 @@ npm install
 npm run dev
 ```
 
+#### Collaboration à distance via Internet (Chacun chez soi) :
+- **Option 1 (Instantanée)** : Double-cliquer sur `Lancer-Serveur-Internet.bat`. Le script génère automatiquement une adresse publique (ex: `https://xxxx.loca.lt`) à partager avec vos collaborateurs distants.
+- **Option 2 (Hébergement 24h/24)** : Connecter le dépôt GitHub sur [Render.com](https://render.com) (gratuit). Render utilise le fichier `render.yaml` pour déployer le serveur relais en ligne 24h/24.
+
 To run integration tests:
 ```bash
 npm test

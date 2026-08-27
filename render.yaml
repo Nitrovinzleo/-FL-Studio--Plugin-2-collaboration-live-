@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: flstudio-collab-server
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: PORT
+        value: 10000
