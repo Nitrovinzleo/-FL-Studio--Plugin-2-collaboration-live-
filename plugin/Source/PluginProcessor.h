@@ -4,6 +4,7 @@
 #include <vector>
 #include <mutex>
 #include <string>
+#include "WebSocketClient.h"
 
 // Represents a captured MIDI note event
 struct CapturedMidiNote
@@ -48,24 +49,19 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Collaboration API methods for UI & Network Thread
+    // Collaboration API methods
     void validateAndSendCurrentPattern();
     void queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes);
-    
-    juce::String getRoomCode() const { return currentRoomCode; }
-    void setRoomCode(const juce::String& code) { currentRoomCode = code; }
 
-    bool isConnected() const { return connectedState; }
-    void setConnectedState(bool connected) { connectedState = connected; }
+    WebSocketClient& getWebSocketClient() { return wsClient; }
 
 private:
-    // Audio-thread safe FIFO / vectors for captured MIDI
+    WebSocketClient wsClient;
+
+    // Audio-thread safe vectors for captured MIDI
     std::mutex midiMutex;
     std::vector<CapturedMidiNote> capturedBuffer;
     std::vector<CapturedMidiNote> incomingQueue;
-
-    juce::String currentRoomCode = "";
-    bool connectedState = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLStudioCollabAudioProcessor)
 };

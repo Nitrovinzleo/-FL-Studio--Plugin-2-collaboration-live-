@@ -1,9 +1,21 @@
 const { WebSocket } = require('ws');
+const http = require('http');
 const { server } = require('../src/server.js');
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    http.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve({ statusCode: res.statusCode, data }));
+    }).on('error', reject);
+  });
+}
 
 async function runTest() {
   console.log('--- STARTING RELAY SERVER INTEGRATION TEST ---');
   const WS_URL = 'ws://localhost:8080';
+  const HTTP_URL = 'http://localhost:8080';
 
   let client1, client2;
   let roomCodeCreated = null;
@@ -22,6 +34,7 @@ async function runTest() {
         const msg = JSON.parse(data.toString());
         if (msg.type === 'ROOM_CREATED') {
           console.log(`[Test SUCCESS] Room created with code: ${msg.roomCode}`);
+          console.log(`[Test SUCCESS] Join URL: ${msg.joinUrl}`);
           roomCodeCreated = msg.roomCode;
           resolve();
         }
@@ -34,7 +47,25 @@ async function runTest() {
       throw new Error('Failed to obtain room code from Client 1');
     }
 
-    // 2. Client 2 connects and joins the room
+    // 2. Test HTTP Web Invitation Page & Room Status API
+    console.log('[Test] Testing HTTP Web Invitation page GET /join/' + roomCodeCreated);
+    const webRes = await httpGet(`${HTTP_URL}/join/${roomCodeCreated}`);
+    if (webRes.statusCode === 200 && webRes.data.includes(roomCodeCreated)) {
+      console.log('[Test SUCCESS] Web Invitation Page rendered correctly with room code!');
+    } else {
+      throw new Error('Web Invitation Page test failed');
+    }
+
+    console.log('[Test] Testing HTTP API GET /api/room/' + roomCodeCreated);
+    const apiRes = await httpGet(`${HTTP_URL}/api/room/${roomCodeCreated}`);
+    const apiJson = JSON.parse(apiRes.data);
+    if (apiRes.statusCode === 200 && apiJson.exists && apiJson.peerCount === 1) {
+      console.log('[Test SUCCESS] Room API returned valid state:', apiJson);
+    } else {
+      throw new Error('Room status API test failed');
+    }
+
+    // 3. Client 2 connects and joins the room
     client2 = new WebSocket(WS_URL);
 
     let client1NotifiedOfPeer = false;
@@ -70,11 +101,11 @@ async function runTest() {
       client2.on('error', reject);
     });
 
-    // 3. Client 1 sends MIDI validation payload to Client 2
+    // 4. Client 1 sends MIDI validation payload to Client 2
     const testMidiPayload = {
       notes: [
-        { noteNumber: 60, velocity: 100, timestampSample: 0, durationSamples: 44100 },
-        { noteNumber: 64, velocity: 90, timestampSample: 22050, durationSamples: 44100 }
+        { noteNumber: 60, velocity: 0.8, sampleOffset: 0, lengthSamples: 44100 },
+        { noteNumber: 64, velocity: 0.9, sampleOffset: 22050, lengthSamples: 44100 }
       ],
       tempoBpm: 128.0,
       trackName: 'Lead Synth Private Draft'
@@ -103,7 +134,7 @@ async function runTest() {
     });
 
     console.log('===================================================');
-    console.log('🎉 ALL RELAY SERVER INTEGRATION TESTS PASSED CLEANLY!');
+    console.log('🎉 ALL RELAY SERVER & WEB INVITATION TESTS PASSED CLEANLY!');
     console.log('===================================================');
   } catch (err) {
     console.error('❌ Test failed with error:', err);

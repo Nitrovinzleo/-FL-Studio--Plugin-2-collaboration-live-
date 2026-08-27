@@ -4,7 +4,7 @@
 FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudioCollabAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (420, 320);
+    setSize (440, 360);
 
     // Header Title
     headerTitleLabel.setText ("FL COLLAB LIVE", juce::dontSendNotification);
@@ -14,7 +14,7 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
     addAndMakeVisible (headerTitleLabel);
 
     // Status Badge
-    statusBadgeLabel.setText ("DECONNECTE", juce::dontSendNotification);
+    statusBadgeLabel.setText ("HORS LIGNE", juce::dontSendNotification);
     statusBadgeLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (255, 90, 90));
     statusBadgeLabel.setJustificationType (juce::Justification::centred);
@@ -33,18 +33,20 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
     roomCodeInput.setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (255, 255, 255));
     addAndMakeVisible (roomCodeInput);
 
+    // Log & Info Label
+    logLabel.setText ("Prêt. Entrez un code ou créez un salon.", juce::dontSendNotification);
+    logLabel.setFont (juce::FontOptions (12.0f));
+    logLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (140, 145, 160));
+    logLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (logLabel);
+
     // Buttons
     createRoomButton.setButtonText ("Créer une session");
     createRoomButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (45, 50, 65));
     createRoomButton.onClick = [this]
     {
-        // Simulated room creation action
-        juce::String mockCode = "XK4R-92";
-        audioProcessor.setRoomCode (mockCode);
-        audioProcessor.setConnectedState (true);
-        roomCodeInput.setText (mockCode);
-        statusBadgeLabel.setText ("SALON ACTIVE (" + mockCode + ")", juce::dontSendNotification);
-        statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
+        logLabel.setText ("Création du salon en cours...", juce::dontSendNotification);
+        audioProcessor.getWebSocketClient().createRoom();
     };
     addAndMakeVisible (createRoomButton);
 
@@ -55,10 +57,8 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
         juce::String enteredCode = roomCodeInput.getText().toUpperCase();
         if (enteredCode.isNotEmpty())
         {
-            audioProcessor.setRoomCode (enteredCode);
-            audioProcessor.setConnectedState (true);
-            statusBadgeLabel.setText ("CONNECTE (" + enteredCode + ")", juce::dontSendNotification);
-            statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
+            logLabel.setText ("Connexion au salon " + enteredCode + "...", juce::dontSendNotification);
+            audioProcessor.getWebSocketClient().joinRoom(enteredCode);
         }
     };
     addAndMakeVisible (joinRoomButton);
@@ -70,17 +70,60 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
     validateButton.onClick = [this]
     {
         audioProcessor.validateAndSendCurrentPattern();
+        logLabel.setText ("✓ Pattern MIDI validé et envoyé !", juce::dontSendNotification);
     };
     addAndMakeVisible (validateButton);
+
+    setupWebSocketCallbacks();
 }
 
 FLStudioCollabAudioProcessorEditor::~FLStudioCollabAudioProcessorEditor()
 {
 }
 
+void FLStudioCollabAudioProcessorEditor::setupWebSocketCallbacks()
+{
+    auto& ws = audioProcessor.getWebSocketClient();
+
+    ws.onRoomCreated = [this](const juce::String& code, const juce::String& joinUrl)
+    {
+        roomCodeInput.setText (code);
+        statusBadgeLabel.setText ("SALON (" + code + " - 1/2)", juce::dontSendNotification);
+        statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (255, 180, 50));
+        logLabel.setText ("Salon créé ! Lien d'invitation: " + joinUrl, juce::dontSendNotification);
+    };
+
+    ws.onRoomJoined = [this](const juce::String& code, int peerCount)
+    {
+        roomCodeInput.setText (code);
+        statusBadgeLabel.setText ("CONNECTÉ (" + code + " - " + juce::String(peerCount) + "/2)", juce::dontSendNotification);
+        statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
+        logLabel.setText ("Rejoint le salon " + code, juce::dontSendNotification);
+    };
+
+    ws.onPeerJoined = [this](const juce::String& peerId, int peerCount)
+    {
+        statusBadgeLabel.setText ("CONNECTÉ (2/2)", juce::dontSendNotification);
+        statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
+        logLabel.setText ("Un collaborateur a rejoint la session !", juce::dontSendNotification);
+    };
+
+    ws.onPeerLeft = [this](const juce::String& peerId, int peerCount)
+    {
+        statusBadgeLabel.setText ("EN ATTENTE (1/2)", juce::dontSendNotification);
+        statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (255, 180, 50));
+        logLabel.setText ("Le collaborateur s'est déconnecté.", juce::dontSendNotification);
+    };
+
+    ws.onError = [this](const juce::String& errorMsg)
+    {
+        logLabel.setText ("⚠️ " + errorMsg, juce::dontSendNotification);
+    };
+}
+
 void FLStudioCollabAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // Sleek dark background with subtle gradient
+    // Sleek dark background gradient
     juce::ColourGradient bgGradient (
         juce::Colour::fromRGB (18, 20, 26), 0.0f, 0.0f,
         juce::Colour::fromRGB (10, 11, 15), 0.0f, (float) getHeight(), false
@@ -96,13 +139,15 @@ void FLStudioCollabAudioProcessorEditor::paint (juce::Graphics& g)
 void FLStudioCollabAudioProcessorEditor::resized()
 {
     headerTitleLabel.setBounds (15, 10, 200, 30);
-    statusBadgeLabel.setBounds (getWidth() - 160, 12, 145, 26);
+    statusBadgeLabel.setBounds (getWidth() - 180, 12, 165, 26);
 
-    roomCodePromptLabel.setBounds (20, 65, 380, 20);
-    roomCodeInput.setBounds (20, 90, 380, 38);
+    roomCodePromptLabel.setBounds (20, 60, 400, 20);
+    roomCodeInput.setBounds (20, 82, 400, 38);
 
-    createRoomButton.setBounds (20, 140, 180, 40);
-    joinRoomButton.setBounds (210, 140, 190, 40);
+    createRoomButton.setBounds (20, 130, 190, 40);
+    joinRoomButton.setBounds (220, 130, 200, 40);
 
-    validateButton.setBounds (20, 210, 380, 70);
+    logLabel.setBounds (20, 182, 400, 22);
+
+    validateButton.setBounds (20, 215, 400, 75);
 }

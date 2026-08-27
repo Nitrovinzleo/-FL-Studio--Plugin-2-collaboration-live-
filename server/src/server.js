@@ -2,17 +2,6 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 
 const PORT = process.env.PORT || 8080;
-const server = http.createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', activeRooms: rooms.size }));
-    return;
-  }
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('FL Studio Collaboration Relay Server Running');
-});
-
-const wss = new WebSocketServer({ server });
 
 // Room storage: roomCode -> Set of WebSocket clients
 const rooms = new Map();
@@ -47,6 +36,178 @@ function broadcastToRoom(roomCode, senderWs, messageData) {
   }
 }
 
+// HTTP Server handling web invitation page and API routes
+const server = http.createServer((req, res) => {
+  const urlParts = req.url.split('?')[0].split('/');
+
+  // Health check
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', activeRooms: rooms.size }));
+    return;
+  }
+
+  // Room status API: /api/room/:roomCode
+  if (urlParts[1] === 'api' && urlParts[2] === 'room' && urlParts[3]) {
+    const code = urlParts[3].toUpperCase();
+    const exists = rooms.has(code);
+    const peerCount = exists ? rooms.get(code).size : 0;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ roomCode: code, exists, peerCount, isFull: peerCount >= 2 }));
+    return;
+  }
+
+  // Web invitation page: /join/:roomCode
+  if (urlParts[1] === 'join' && urlParts[2]) {
+    const roomCode = urlParts[2].toUpperCase();
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejoindre la Session FL Studio - ${roomCode}</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f1117 0%, #1a1d28 100%);
+      --card-bg: rgba(25, 29, 41, 0.85);
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border: #374151;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .code-box {
+      background: #11131b;
+      border: 2px dashed var(--accent);
+      border-radius: 12px;
+      padding: 20px;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #a78bfa;
+      margin-bottom: 24px;
+      user-select: all;
+    }
+    .btn-copy {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-copy:hover { background: var(--accent-hover); }
+    .btn-copy:active { transform: scale(0.98); }
+    .instructions {
+      margin-top: 28px;
+      text-align: left;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+    .instructions h4 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .instructions ol {
+      padding-left: 20px;
+      font-size: 14px;
+      color: #d1d5db;
+      line-height: 1.6;
+    }
+    .toast {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #34d399;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">FL COLLAB LIVE</div>
+    <div class="subtitle">Invitation à rejoindre une session de collaboration MIDI</div>
+    
+    <div class="code-box" id="roomCode">${roomCode}</div>
+    
+    <button class="btn-copy" onclick="copyCode()">Copier le code de salon</button>
+    <div class="toast" id="toast">✓ Code copié dans le presse-papier !</div>
+    
+    <div class="instructions">
+      <h4>Comment rejoindre :</h4>
+      <ol>
+        <li>Copiez le code ci-dessus.</li>
+        <li>Ouvrez votre projet dans <strong>FL Studio</strong>.</li>
+        <li>Chargez le plugin <strong>FL Studio Collab</strong> sur votre piste.</li>
+        <li>Collez le code dans le champ du plugin et cliquez sur <strong>Rejoindre</strong>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    function copyCode() {
+      const code = document.getElementById('roomCode').innerText.trim();
+      navigator.clipboard.writeText(code).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+      });
+    }
+  </script>
+</body>
+</html>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('Serveur relais FL Studio Collaboration Live actif.');
+});
+
+const wss = new WebSocketServer({ server });
+
 wss.on('connection', (ws) => {
   const clientId = generateClientId();
   clients.set(ws, { roomCode: null, clientId });
@@ -78,7 +239,8 @@ wss.on('connection', (ws) => {
           type: 'ROOM_CREATED',
           roomCode: code,
           clientId: clientInfo.clientId,
-          peerCount: 1
+          peerCount: 1,
+          joinUrl: `http://localhost:${PORT}/join/${code}`
         }));
         console.log(`[*] Room created: ${code} by client ${clientId}`);
         break;
@@ -89,7 +251,7 @@ wss.on('connection', (ws) => {
         if (!rooms.has(targetCode)) {
           ws.send(JSON.stringify({
             type: 'ERROR',
-            message: `Room code '${targetCode}' not found.`
+            message: `Salon '${targetCode}' introuvable.`
           }));
           return;
         }
@@ -98,7 +260,7 @@ wss.on('connection', (ws) => {
         if (roomSet.size >= 2) {
           ws.send(JSON.stringify({
             type: 'ERROR',
-            message: `Room '${targetCode}' is full (max 2 users).`
+            message: `Le salon '${targetCode}' est complet (2 utilisateurs max).`
           }));
           return;
         }
@@ -131,13 +293,13 @@ wss.on('connection', (ws) => {
         if (!currentRoom || !rooms.has(currentRoom)) {
           ws.send(JSON.stringify({
             type: 'ERROR',
-            message: 'You are not in an active room.'
+            message: 'Vous n\'êtes pas dans un salon actif.'
           }));
           return;
         }
 
         const payload = msg.payload || {};
-        console.log(`[MIDI] Received validation push from ${clientId} in room ${currentRoom}`);
+        console.log(`[MIDI] Validation push from ${clientId} in room ${currentRoom} (${(payload.notes || []).length} notes)`);
 
         // Broadcast to peer in room
         broadcastToRoom(currentRoom, ws, {
@@ -193,6 +355,7 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`====================================================`);
   console.log(`🚀 FL Studio Collaboration Relay Server running on port ${PORT}`);
+  console.log(`🌐 Invitation page available at: http://localhost:${PORT}/join/CODE`);
   console.log(`====================================================`);
 });
 

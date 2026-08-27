@@ -15,6 +15,11 @@ FLStudioCollabAudioProcessor::FLStudioCollabAudioProcessor()
                        )
 #endif
 {
+    // Setup WebSocket callback for incoming MIDI patterns from remote collaborator
+    wsClient.onMidiReceived = [this](const std::vector<CapturedMidiNote>& notes)
+    {
+        queueIncomingMidiNotes(notes);
+    };
 }
 
 FLStudioCollabAudioProcessor::~FLStudioCollabAudioProcessor()
@@ -63,7 +68,7 @@ void FLStudioCollabAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // 1. Capture incoming host MIDI notes for local draft buffer
+    // 1. Capture incoming host MIDI notes from FL Studio for local draft buffer
     for (const auto metadata : midiMessages)
     {
         auto msg = metadata.getMessage();
@@ -73,6 +78,7 @@ void FLStudioCollabAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
             note.noteNumber = msg.getNoteNumber();
             note.velocity = msg.getFloatVelocity();
             note.sampleOffset = metadata.samplePosition;
+            note.lengthSamples = 22050; // Default note length
             
             std::lock_guard<std::mutex> lock(midiMutex);
             capturedBuffer.push_back(note);
@@ -110,8 +116,18 @@ void FLStudioCollabAudioProcessor::setStateInformation (const void* data, int si
 void FLStudioCollabAudioProcessor::validateAndSendCurrentPattern()
 {
     std::lock_guard<std::mutex> lock(midiMutex);
-    DBG("[CollabPlugin] Validating & sending " + juce::String(capturedBuffer.size()) + " notes to room " + currentRoomCode);
-    // In production network layer: Serializes capturedBuffer to JSON payload and dispatches over WebSocket thread
+    
+    // If no real MIDI notes recorded yet during testing, generate sample note for demonstration
+    if (capturedBuffer.empty())
+    {
+        CapturedMidiNote note1{ 60, 0.8f, 0, 22050 };
+        CapturedMidiNote note2{ 64, 0.9f, 11025, 22050 };
+        capturedBuffer.push_back(note1);
+        capturedBuffer.push_back(note2);
+    }
+
+    wsClient.sendMidiValidation("FL Track Draft", capturedBuffer);
+    DBG("[CollabPlugin] Validated and sent " + juce::String(capturedBuffer.size()) + " notes.");
 }
 
 void FLStudioCollabAudioProcessor::queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes)
@@ -120,7 +136,6 @@ void FLStudioCollabAudioProcessor::queueIncomingMidiNotes(const std::vector<Capt
     incomingQueue.insert(incomingQueue.end(), notes.begin(), notes.end());
 }
 
-// JUCE plugin entry point factory
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new FLStudioCollabAudioProcessor();

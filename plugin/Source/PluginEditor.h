@@ -27,5 +27,9 @@ private:
 
     juce::TextButton validateButton;
 
+    juce::Label logLabel;
+
+    void setupWebSocketCallbacks();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLStudioCollabAudioProcessorEditor)
 };
