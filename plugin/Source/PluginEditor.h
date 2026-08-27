@@ -26,6 +26,12 @@ private:
     juce::TextButton joinRoomButton;
     juce::TextButton copyCodeButton;
 
+    juce::Label modeLabel;
+    juce::TextButton modeToggleButton;
+
+    juce::Label trackLabel;
+    juce::TextEditor trackInput;
+
     juce::Label activityLabel;
     juce::Label logLabel;
 

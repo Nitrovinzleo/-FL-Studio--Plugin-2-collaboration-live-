@@ -124,6 +124,42 @@ void WebSocketClient::sendMidiValidation(const juce::String& trackName, const st
     webSocket.send(jsonStr.toStdString());
 }
 
+void WebSocketClient::sendAudioValidation(const juce::String& trackName, const juce::AudioBuffer<float>& audioBuffer, double sampleRate)
+{
+    if (!connected || currentRoomCode.isEmpty()) return;
+
+    juce::MemoryOutputStream memStream;
+    juce::WavAudioFormat wavFormat;
+    
+    std::unique_ptr<juce::AudioFormatWriter> writer(
+        wavFormat.createWriterFor(&memStream, sampleRate, (unsigned int) audioBuffer.getNumChannels(), 16, {}, 0)
+    );
+
+    if (writer != nullptr)
+    {
+        writer->writeFromAudioSampleBuffer(audioBuffer, 0, audioBuffer.getNumSamples());
+        writer.reset(); // Flush writer
+
+        juce::String base64Wav = juce::Base64::toBase64(memStream.getData(), memStream.getDataSize());
+
+        juce::DynamicObject::Ptr payloadObj = new juce::DynamicObject();
+        payloadObj->setProperty("trackName", trackName);
+        payloadObj->setProperty("sampleRate", sampleRate);
+        payloadObj->setProperty("numChannels", audioBuffer.getNumChannels());
+        payloadObj->setProperty("samplesLength", audioBuffer.getNumSamples());
+        payloadObj->setProperty("pcmDataBase64", base64Wav);
+
+        juce::DynamicObject::Ptr mainObj = new juce::DynamicObject();
+        mainObj->setProperty("type", "VALIDATE_AUDIO");
+        mainObj->setProperty("roomCode", currentRoomCode);
+        mainObj->setProperty("payload", juce::var(payloadObj.get()));
+
+        juce::var jsonVar(mainObj.get());
+        juce::String jsonStr = juce::JSON::toString(jsonVar);
+        webSocket.send(jsonStr.toStdString());
+    }
+}
+
 void WebSocketClient::handleIncomingMessage(const std::string& messageStr)
 {
     juce::String juceStr (messageStr);
@@ -203,6 +239,31 @@ void WebSocketClient::handleIncomingMessage(const std::string& messageStr)
         {
             if (onMidiReceived) onMidiReceived(receivedNotes, trackName);
         });
+    }
+    else if (type == "AUDIO_RECEIVED")
+    {
+        juce::var payload = parsed["payload"];
+        juce::String trackName = payload["trackName"].toString();
+        juce::String base64Wav = payload["pcmDataBase64"].toString();
+        
+        juce::MemoryOutputStream memStream;
+        if (juce::Base64::convertFromBase64(memStream, base64Wav))
+        {
+            juce::MemoryInputStream inputStream(memStream.getData(), memStream.getDataSize(), false);
+            juce::WavAudioFormat wavFormat;
+            std::unique_ptr<juce::AudioFormatReader> reader(wavFormat.createReaderFor(&inputStream, false));
+            
+            if (reader != nullptr)
+            {
+                juce::AudioBuffer<float> receivedBuffer((int) reader->numChannels, (int) reader->lengthInSamples);
+                reader->read(&receivedBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
+
+                juce::MessageManager::callAsync([this, receivedBuffer, trackName]()
+                {
+                    if (onAudioReceived) onAudioReceived(receivedBuffer, trackName);
+                });
+            }
+        }
     }
     else if (type == "ERROR")
     {

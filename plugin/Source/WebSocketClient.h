@@ -18,6 +18,7 @@ public:
     void joinRoom(const juce::String& roomCode);
     void sendDraftActivity(bool isComposing);
     void sendMidiValidation(const juce::String& trackName, const std::vector<struct CapturedMidiNote>& notes);
+    void sendAudioValidation(const juce::String& trackName, const juce::AudioBuffer<float>& audioBuffer, double sampleRate);
 
     // Callbacks setup
     std::function<void(const juce::String& roomCode, const juce::String& joinUrl)> onRoomCreated;
@@ -26,6 +27,7 @@ public:
     std::function<void(const juce::String& peerId, int peerCount)> onPeerLeft;
     std::function<void(const juce::String& peerId, bool isComposing)> onPeerTyping;
     std::function<void(const std::vector<struct CapturedMidiNote>& notes, const juce::String& trackName)> onMidiReceived;
+    std::function<void(const juce::AudioBuffer<float>& audioBuffer, const juce::String& trackName)> onAudioReceived;
     std::function<void(const juce::String& errorMsg)> onError;
     std::function<void(bool isConnected)> onConnectionStatusChanged;
 

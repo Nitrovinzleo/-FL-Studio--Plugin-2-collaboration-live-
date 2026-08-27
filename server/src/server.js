@@ -185,7 +185,7 @@ const server = http.createServer((req, res) => {
 <body>
   <div class="card">
     <div class="logo">FL COLLAB LIVE</div>
-    <div class="subtitle">Invitation à rejoindre une session de collaboration MIDI</div>
+    <div class="subtitle">Invitation à rejoindre une session de collaboration MIDI / Audio</div>
     
     <div class="code-box" id="roomCode">${roomCode}</div>
     
@@ -334,6 +334,35 @@ wss.on('connection', (ws) => {
         // Broadcast to peer in room
         broadcastToRoom(currentRoom, ws, {
           type: 'MIDI_RECEIVED',
+          senderId: clientId,
+          payload,
+          timestamp: Date.now()
+        });
+
+        // Acknowledge sender
+        ws.send(JSON.stringify({
+          type: 'VALIDATE_ACK',
+          timestamp: Date.now()
+        }));
+        break;
+      }
+
+      case 'VALIDATE_AUDIO': {
+        const currentRoom = clientInfo.roomCode;
+        if (!currentRoom || !rooms.has(currentRoom)) {
+          ws.send(JSON.stringify({
+            type: 'ERROR',
+            message: 'Vous n\'êtes pas dans un salon actif.'
+          }));
+          return;
+        }
+
+        const payload = msg.payload || {};
+        console.log(`[AUDIO] Validation audio render push from ${clientId} in room ${currentRoom} (${payload.trackName || 'Piste Audio'})`);
+
+        // Broadcast audio render payload to peer
+        broadcastToRoom(currentRoom, ws, {
+          type: 'AUDIO_RECEIVED',
           senderId: clientId,
           payload,
           timestamp: Date.now()

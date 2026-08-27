@@ -141,8 +141,34 @@ async function runTest() {
       }));
     });
 
+    // 6. Test Audio Render Validation Push (VALIDATE_AUDIO)
+    const testAudioPayload = {
+      trackName: 'Piste 1: Drums Render',
+      sampleRate: 44100,
+      numChannels: 2,
+      samplesLength: 512,
+      pcmDataBase64: 'AAAAAEAAAAA='
+    };
+
+    await new Promise((resolve, reject) => {
+      client2.on('message', (data) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'AUDIO_RECEIVED') {
+          console.log('[Test SUCCESS] Client 2 received AUDIO validation payload from Client 1!');
+          console.log('Received audio track name:', msg.payload.trackName);
+          resolve();
+        }
+      });
+
+      console.log('[Test] Client 1 sending VALIDATE_AUDIO push...');
+      client1.send(JSON.stringify({
+        type: 'VALIDATE_AUDIO',
+        payload: testAudioPayload
+      }));
+    });
+
     console.log('===================================================');
-    console.log('🎉 ALL RELAY SERVER INTEGRATION & DRAFT ACTIVITY TESTS PASSED CLEANLY!');
+    console.log('🎉 ALL RELAY SERVER INTEGRATION, MIDI & AUDIO RENDER TESTS PASSED CLEANLY!');
     console.log('===================================================');
   } catch (err) {
     console.error('❌ Test failed with error:', err);

@@ -6,6 +6,13 @@
 #include <string>
 #include "WebSocketClient.h"
 
+// Mode selector: MIDI vs Audio Render
+enum class CollabMode
+{
+    MIDI = 0,
+    AudioRender = 1
+};
+
 // Represents a captured MIDI note event
 struct CapturedMidiNote
 {
@@ -21,7 +28,9 @@ struct ValidatedPatternItem
     int index = 1;
     juce::String timestampStr;
     juce::String trackName;
+    CollabMode mode = CollabMode::MIDI;
     std::vector<CapturedMidiNote> notes;
+    juce::AudioBuffer<float> audioBuffer;
 };
 
 class FLStudioCollabAudioProcessor  : public juce::AudioProcessor
@@ -61,7 +70,14 @@ public:
     // Collaboration API methods
     void validateAndSendCurrentPattern();
     void queueIncomingMidiNotes(const std::vector<CapturedMidiNote>& notes, const juce::String& trackName = "Piste reçue");
+    void queueIncomingAudioBuffer(const juce::AudioBuffer<float>& buffer, const juce::String& trackName = "Rendu Audio reçu");
     void replayHistoricalPattern(int historyIndex);
+
+    CollabMode getCurrentMode() const { return currentMode; }
+    void setCurrentMode(CollabMode mode) { currentMode = mode; }
+
+    juce::String getTrackName() const { return currentTrackName; }
+    void setTrackName(const juce::String& name) { currentTrackName = name; }
 
     const std::vector<ValidatedPatternItem>& getValidationHistory() const { return validationHistory; }
 
@@ -70,10 +86,23 @@ public:
 private:
     WebSocketClient wsClient;
 
-    // Audio-thread safe vectors for captured MIDI
+    CollabMode currentMode = CollabMode::MIDI;
+    juce::String currentTrackName = "Piste 1: Main";
+    double currentSampleRate = 44100.0;
+
+    // Audio-thread safe vectors & buffers
     std::mutex midiMutex;
+    std::mutex audioMutex;
+
     std::vector<CapturedMidiNote> capturedBuffer;
     std::vector<CapturedMidiNote> incomingQueue;
+
+    juce::AudioBuffer<float> recordedAudioBuffer;
+    int recordedAudioSamples = 0;
+
+    juce::AudioBuffer<float> incomingAudioBuffer;
+    int incomingAudioReadPos = 0;
+
     std::vector<ValidatedPatternItem> validationHistory;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLStudioCollabAudioProcessor)

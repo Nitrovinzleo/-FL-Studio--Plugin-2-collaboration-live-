@@ -4,10 +4,10 @@
 FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudioCollabAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (460, 440);
+    setSize (480, 520);
 
     // Header Title
-    headerTitleLabel.setText ("FL COLLAB LIVE", juce::dontSendNotification);
+    headerTitleLabel.setText ("FL COLLAB LIVE V2", juce::dontSendNotification);
     headerTitleLabel.setFont (juce::FontOptions (20.0f, juce::Font::bold));
     headerTitleLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (240, 240, 245));
     headerTitleLabel.setJustificationType (juce::Justification::left);
@@ -47,20 +47,7 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
     };
     addAndMakeVisible (copyCodeButton);
 
-    // Activity Indicator
-    activityLabel.setText ("● Statut pair: En attente", juce::dontSendNotification);
-    activityLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
-    activityLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (150, 155, 170));
-    addAndMakeVisible (activityLabel);
-
-    // Log Label
-    logLabel.setText ("Prêt. Entrez un code ou créez un salon.", juce::dontSendNotification);
-    logLabel.setFont (juce::FontOptions (12.0f));
-    logLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (140, 145, 160));
-    logLabel.setJustificationType (juce::Justification::left);
-    addAndMakeVisible (logLabel);
-
-    // Buttons
+    // Session Buttons
     createRoomButton.setButtonText ("Créer une session");
     createRoomButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (45, 50, 65));
     createRoomButton.onClick = [this]
@@ -82,6 +69,58 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
         }
     };
     addAndMakeVisible (joinRoomButton);
+
+    // Mode Toggle Controls
+    modeLabel.setText ("Mode d'échange :", juce::dontSendNotification);
+    modeLabel.setFont (juce::FontOptions (12.0f));
+    modeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
+    addAndMakeVisible (modeLabel);
+
+    modeToggleButton.setButtonText ("🎹 MODE: MIDI");
+    modeToggleButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 70, 120));
+    modeToggleButton.onClick = [this]
+    {
+        if (audioProcessor.getCurrentMode() == CollabMode::MIDI)
+        {
+            audioProcessor.setCurrentMode(CollabMode::AudioRender);
+            modeToggleButton.setButtonText ("🔊 MODE: RENDU AUDIO");
+            modeToggleButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (140, 60, 40));
+            logLabel.setText ("Mode Rendu Audio activé (transmet le son PCM réel)", juce::dontSendNotification);
+        }
+        else
+        {
+            audioProcessor.setCurrentMode(CollabMode::MIDI);
+            modeToggleButton.setButtonText ("🎹 MODE: MIDI");
+            modeToggleButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 70, 120));
+            logLabel.setText ("Mode MIDI activé (transmet les événements de notes)", juce::dontSendNotification);
+        }
+    };
+    addAndMakeVisible (modeToggleButton);
+
+    // Track Name Input
+    trackLabel.setText ("Nom de la piste :", juce::dontSendNotification);
+    trackLabel.setFont (juce::FontOptions (12.0f));
+    trackLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
+    addAndMakeVisible (trackLabel);
+
+    trackInput.setText (audioProcessor.getTrackName());
+    trackInput.setColour (juce::TextEditor::backgroundColourId, juce::Colour::fromRGB (25, 28, 36));
+    trackInput.onTextChange = [this]
+    {
+        audioProcessor.setTrackName(trackInput.getText());
+    };
+    addAndMakeVisible (trackInput);
+
+    // Activity & Log Labels
+    activityLabel.setText ("● Statut pair: En attente", juce::dontSendNotification);
+    activityLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    activityLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (150, 155, 170));
+    addAndMakeVisible (activityLabel);
+
+    logLabel.setText ("Prêt. Entrez un code ou créez un salon.", juce::dontSendNotification);
+    logLabel.setFont (juce::FontOptions (12.0f));
+    logLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (140, 145, 160));
+    addAndMakeVisible (logLabel);
 
     // Validation History Controls
     historyLabel.setText ("Historique des validations reçues :", juce::dontSendNotification);
@@ -107,13 +146,13 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
     addAndMakeVisible (replayHistoryButton);
 
     // Main Action Button: VALIDER PATTERN
-    validateButton.setButtonText ("VALIDER PATTERN (PUSH MIDI)");
-    validateButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (110, 45, 220)); // Vibrant purple accent
+    validateButton.setButtonText ("VALIDER PATTERN (PUSH LIVE)");
+    validateButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (110, 45, 220));
     validateButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (255, 255, 255));
     validateButton.onClick = [this]
     {
         audioProcessor.validateAndSendCurrentPattern();
-        logLabel.setText ("✓ Pattern MIDI validé et envoyé !", juce::dontSendNotification);
+        logLabel.setText ("✓ Contenu validé et envoyé au collaborateur !", juce::dontSendNotification);
     };
     addAndMakeVisible (validateButton);
 
@@ -131,7 +170,8 @@ void FLStudioCollabAudioProcessorEditor::updateHistoryComboBox()
     const auto& history = audioProcessor.getValidationHistory();
     for (size_t i = 0; i < history.size(); ++i)
     {
-        juce::String title = "#" + juce::String(i + 1) + " - " + history[i].trackName + " (" + juce::String(history[i].notes.size()) + " notes)";
+        juce::String modePrefix = (history[i].mode == CollabMode::MIDI) ? "🎹 [MIDI]" : "🔊 [AUDIO]";
+        juce::String title = "#" + juce::String(i + 1) + " " + modePrefix + " " + history[i].trackName;
         historyComboBox.addItem(title, (int) (i + 1));
     }
     if (!history.empty())
@@ -189,7 +229,15 @@ void FLStudioCollabAudioProcessorEditor::setupWebSocketCallbacks()
 
     ws.onMidiReceived = [this](const std::vector<CapturedMidiNote>& notes, const juce::String& trackName)
     {
-        logLabel.setText ("♫ NOUVEAU PATTERN REÇU (" + juce::String(notes.size()) + " notes) !", juce::dontSendNotification);
+        logLabel.setText ("♫ NOUVEAU PATTERN MIDI REÇU (" + juce::String(notes.size()) + " notes) !", juce::dontSendNotification);
+        activityLabel.setText ("🟢 Collaborateur connecté", juce::dontSendNotification);
+        activityLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
+        updateHistoryComboBox();
+    };
+
+    ws.onAudioReceived = [this](const juce::AudioBuffer<float>& buffer, const juce::String& trackName)
+    {
+        logLabel.setText ("🔊 NOUVEAU RENDU AUDIO REÇU (" + trackName + ") !", juce::dontSendNotification);
         activityLabel.setText ("🟢 Collaborateur connecté", juce::dontSendNotification);
         activityLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (80, 220, 120));
         updateHistoryComboBox();
@@ -218,22 +266,28 @@ void FLStudioCollabAudioProcessorEditor::paint (juce::Graphics& g)
 
 void FLStudioCollabAudioProcessorEditor::resized()
 {
-    headerTitleLabel.setBounds (15, 10, 200, 30);
+    headerTitleLabel.setBounds (15, 10, 220, 30);
     statusBadgeLabel.setBounds (getWidth() - 190, 12, 175, 26);
 
-    roomCodePromptLabel.setBounds (20, 60, 260, 20);
-    roomCodeInput.setBounds (20, 82, 260, 38);
-    copyCodeButton.setBounds (290, 82, 150, 38);
+    roomCodePromptLabel.setBounds (20, 60, 280, 20);
+    roomCodeInput.setBounds (20, 82, 280, 38);
+    copyCodeButton.setBounds (310, 82, 150, 38);
 
-    createRoomButton.setBounds (20, 130, 210, 40);
-    joinRoomButton.setBounds (240, 130, 200, 40);
+    createRoomButton.setBounds (20, 130, 220, 40);
+    joinRoomButton.setBounds (250, 130, 210, 40);
 
-    activityLabel.setBounds (20, 180, 420, 20);
-    logLabel.setBounds (20, 205, 420, 20);
+    modeLabel.setBounds (20, 180, 210, 20);
+    modeToggleButton.setBounds (20, 202, 210, 36);
 
-    historyLabel.setBounds (20, 240, 420, 20);
-    historyComboBox.setBounds (20, 265, 310, 36);
-    replayHistoryButton.setBounds (340, 265, 100, 36);
+    trackLabel.setBounds (250, 180, 210, 20);
+    trackInput.setBounds (250, 202, 210, 36);
 
-    validateButton.setBounds (20, 320, 420, 95);
+    activityLabel.setBounds (20, 250, 440, 20);
+    logLabel.setBounds (20, 272, 440, 20);
+
+    historyLabel.setBounds (20, 305, 440, 20);
+    historyComboBox.setBounds (20, 330, 330, 36);
+    replayHistoryButton.setBounds (360, 330, 100, 36);
+
+    validateButton.setBounds (20, 390, 440, 105);
 }
