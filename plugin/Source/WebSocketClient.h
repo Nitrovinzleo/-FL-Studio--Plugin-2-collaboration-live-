@@ -11,7 +11,7 @@ public:
     WebSocketClient();
     ~WebSocketClient();
 
-    void connectToServer(const juce::String& serverUrl = "ws://localhost:8080");
+    void connectToServer(const juce::String& serverUrl = "wss://flstudio-collab.onrender.com");
     void disconnectFromServer();
 
     void createRoom();
@@ -38,7 +38,7 @@ private:
     ix::WebSocket webSocket;
     bool connected = false;
     juce::String currentRoomCode = "";
-    juce::String lastServerUrl = "ws://localhost:8080";
+    juce::String lastServerUrl = "wss://flstudio-collab.onrender.com";
 
     void handleIncomingMessage(const std::string& messageStr);
 
