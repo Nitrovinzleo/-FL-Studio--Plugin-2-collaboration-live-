@@ -62,6 +62,4 @@ The resulting `.vst3` binary will be generated in `plugin/build/FLStudioCollabPl
 
 ---
 
-## 🔒 Security & Exclusions
 
-AI workspace files (`.gemini`, `.antigravity`, `brain`, `.agents`), build output directories (`build/`, `.vs/`), and `node_modules/` are strictly ignored via `.gitignore`.
