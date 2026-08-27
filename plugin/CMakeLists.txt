@@ -26,14 +26,14 @@ FetchContent_MakeAvailable(ixwebsocket)
 
 # Create VST3 and Standalone Plugin targets
 juce_add_plugin(FLStudioCollabPlugin
-    COMPANY_NAME "AntigravityLab"
+    COMPANY_NAME "FLStudioCollab"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
-    PLUGIN_MANUFACTURER_CODE Anti
+    PLUGIN_MANUFACTURER_CODE FLCB
     PLUGIN_CODE Flcb
     FORMATS VST3 Standalone
     PRODUCT_NAME "FL Studio Collab Plugin"

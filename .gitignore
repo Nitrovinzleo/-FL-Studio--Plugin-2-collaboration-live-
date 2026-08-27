@@ -2,7 +2,7 @@
 # Gitignore for FL Studio Collaboration Project
 # ==========================================
 
-# 1. AI Tooling, Workspace Logs & Local Assistants
+# 1. Local Workspace & Temporary Logs
 .gemini/
 .antigravity/
 .cursor/
