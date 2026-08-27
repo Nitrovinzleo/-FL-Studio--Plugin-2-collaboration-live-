@@ -12,6 +12,8 @@
 .agents/
 brain/
 scratch/
+tools/
+FL_Studio_Collab_Portable/
 *.log
 
 # 2. C++ / JUCE & IDE Build Artifacts

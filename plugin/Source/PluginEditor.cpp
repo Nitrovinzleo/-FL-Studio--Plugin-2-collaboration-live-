@@ -8,26 +8,26 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
 
     // Header Title
     headerTitleLabel.setText ("FL COLLAB LIVE V2", juce::dontSendNotification);
-    headerTitleLabel.setFont (juce::FontOptions (20.0f, juce::Font::bold));
+    headerTitleLabel.setFont (juce::Font (20.0f, juce::Font::bold));
     headerTitleLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (240, 240, 245));
     headerTitleLabel.setJustificationType (juce::Justification::left);
     addAndMakeVisible (headerTitleLabel);
 
     // Status Badge
     statusBadgeLabel.setText ("HORS LIGNE", juce::dontSendNotification);
-    statusBadgeLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    statusBadgeLabel.setFont (juce::Font (12.0f, juce::Font::bold));
     statusBadgeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (255, 90, 90));
     statusBadgeLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (statusBadgeLabel);
 
     // Room Code Label & Input
     roomCodePromptLabel.setText ("Code de salon (ex: XK4R-92) :", juce::dontSendNotification);
-    roomCodePromptLabel.setFont (juce::FontOptions (13.0f));
+    roomCodePromptLabel.setFont (juce::Font (13.0f));
     roomCodePromptLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
     addAndMakeVisible (roomCodePromptLabel);
 
     roomCodeInput.setTextToShowWhenEmpty ("EX: XK4R-92", juce::Colour::fromRGB (120, 125, 140));
-    roomCodeInput.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+    roomCodeInput.setFont (juce::Font (14.0f, juce::Font::bold));
     roomCodeInput.setColour (juce::TextEditor::backgroundColourId, juce::Colour::fromRGB (25, 28, 36));
     roomCodeInput.setColour (juce::TextEditor::outlineColourId, juce::Colour::fromRGB (50, 55, 70));
     roomCodeInput.setColour (juce::TextEditor::textColourId, juce::Colour::fromRGB (255, 255, 255));
@@ -72,7 +72,7 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
 
     // Mode Toggle Controls
     modeLabel.setText ("Mode d'échange :", juce::dontSendNotification);
-    modeLabel.setFont (juce::FontOptions (12.0f));
+    modeLabel.setFont (juce::Font (12.0f));
     modeLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
     addAndMakeVisible (modeLabel);
 
@@ -99,7 +99,7 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
 
     // Track Name Input
     trackLabel.setText ("Nom de la piste :", juce::dontSendNotification);
-    trackLabel.setFont (juce::FontOptions (12.0f));
+    trackLabel.setFont (juce::Font (12.0f));
     trackLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
     addAndMakeVisible (trackLabel);
 
@@ -113,18 +113,18 @@ FLStudioCollabAudioProcessorEditor::FLStudioCollabAudioProcessorEditor (FLStudio
 
     // Activity & Log Labels
     activityLabel.setText ("● Statut pair: En attente", juce::dontSendNotification);
-    activityLabel.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    activityLabel.setFont (juce::Font (12.0f, juce::Font::bold));
     activityLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (150, 155, 170));
     addAndMakeVisible (activityLabel);
 
     logLabel.setText ("Prêt. Entrez un code ou créez un salon.", juce::dontSendNotification);
-    logLabel.setFont (juce::FontOptions (12.0f));
+    logLabel.setFont (juce::Font (12.0f));
     logLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (140, 145, 160));
     addAndMakeVisible (logLabel);
 
     // Validation History Controls
     historyLabel.setText ("Historique des validations reçues :", juce::dontSendNotification);
-    historyLabel.setFont (juce::FontOptions (12.0f));
+    historyLabel.setFont (juce::Font (12.0f));
     historyLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (180, 185, 200));
     addAndMakeVisible (historyLabel);
 

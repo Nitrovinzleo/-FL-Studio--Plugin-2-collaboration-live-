@@ -21,12 +21,14 @@ WebSocketClient::WebSocketClient()
         else if (msg->type == ix::WebSocketMessageType::Close || msg->type == ix::WebSocketMessageType::Error)
         {
             connected = false;
-            juce::MessageManager::callAsync([this, msg]()
+            ix::WebSocketMessageType msgType = msg->type;
+            juce::String errReason = juce::String(msg->errorInfo.reason);
+            juce::MessageManager::callAsync([this, msgType, errReason]()
             {
                 if (onConnectionStatusChanged) onConnectionStatusChanged(false);
-                if (msg->type == ix::WebSocketMessageType::Error && onError)
+                if (msgType == ix::WebSocketMessageType::Error && onError)
                 {
-                    onError("Erreur réseau: " + juce::String(msg->errorInfo.reason));
+                    onError("Erreur réseau: " + errReason);
                 }
             });
         }

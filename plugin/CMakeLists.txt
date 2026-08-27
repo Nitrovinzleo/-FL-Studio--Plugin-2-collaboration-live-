@@ -24,7 +24,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ixwebsocket)
 
-# Create VST3 and Standalone Plugin targets
+if(APPLE)
+    set(PLUGIN_FORMATS VST3 AU Standalone)
+else()
+    set(PLUGIN_FORMATS VST3 Standalone)
+endif()
+
+# Create VST3, AU (macOS) and Standalone Plugin targets
 juce_add_plugin(FLStudioCollabPlugin
     COMPANY_NAME "FLStudioCollab"
     IS_SYNTH FALSE
@@ -35,9 +41,11 @@ juce_add_plugin(FLStudioCollabPlugin
     COPY_PLUGIN_AFTER_BUILD FALSE
     PLUGIN_MANUFACTURER_CODE FLCB
     PLUGIN_CODE Flcb
-    FORMATS VST3 Standalone
+    FORMATS ${PLUGIN_FORMATS}
     PRODUCT_NAME "FL Studio Collab Plugin"
 )
+
+juce_generate_juce_header(FLStudioCollabPlugin)
 
 # Source files
 target_sources(FLStudioCollabPlugin PRIVATE

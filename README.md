@@ -62,4 +62,16 @@ The resulting `.vst3` binary will be generated in `plugin/build/FLStudioCollabPl
 
 ---
 
+## 💾 Package Portable pour Clé USB
+
+Un package complet et prêt-à-l'emploi sans installation est disponible pour être transporté sur clé USB :
+
+### 📂 Contenu du dossier portable (`FL_Studio_Collab_Portable`) :
+- **`VST3/`** : `FL Studio Collab Plugin.vst3` (Plugin à copier dans `C:\Program Files\Common Files\VST3\`)
+- **`Standalone/`** : `FL Studio Collab Plugin.exe` (Application autonome Windows)
+- **`Server/`** : `FLStudioCollabServer.exe` (Serveur Relais autonome Node SEA ne nécessitant aucune installation de Node.js)
+- **`Lancer-Serveur.bat`** : Script de lancement rapide du serveur relais depuis la racine de la clé USB.
+
+### 📥 Téléchargement depuis GitHub :
+Vous pouvez télécharger directement l'archive ZIP prêt-à-l'emploi **`FL_Studio_Collab_v1.0.0_Portable.zip`** depuis la section [Releases du dépôt GitHub](https://github.com/Nitrovinzleo/-FL-Studio--Plugin-2-collaboration-live-/releases).
 
