@@ -1,4 +1,4 @@
-# Guide Technique - FL Studio Collaboration Live
+# Guide Technique & Tutoriel - FL Studio Collaboration Live
 
 Plugin VST3/AU et serveur relais WebSocket pour la collaboration temps réel sur FL Studio.
 
@@ -13,37 +13,24 @@ Chaque utilisateur travaille localement sur son projet FL Studio. Lorsqu'un patt
 
 ---
 
-## 2. Version Portable (Clé USB)
+## 2. Tutoriel par Système d'Exploitation
 
+<details open>
+<summary><b>🪟 Windows (Tutoriel d'installation & compilation)</b></summary>
+
+<br/>
+
+### Installation de la Version Portable (Clé USB)
 Le dossier `FL_Studio_Collab_Portable` (et l'archive `.zip`) permet de lancer le système sur n'importe quel PC Windows sans installation :
 
-- `VST3/` : Copier `FL Studio Collab Plugin.vst3` dans `C:\Program Files\Common Files\VST3\`
-- `Standalone/` : Application autonome `FL Studio Collab Plugin.exe`
-- `Server/` : Serveur relais autonome `FLStudioCollabServer.exe`
-- `Lancer-Serveur.bat` : Lancer le serveur sur le port 8080.
+- **VST3** : Copier `FL Studio Collab Plugin.vst3` dans `C:\Program Files\Common Files\VST3\`
+- **Standalone** : Application autonome `FL Studio Collab Plugin.exe`
+- **Server** : Serveur relais autonome `FLStudioCollabServer.exe`
+- **Lancer-Serveur-Internet.bat** : Lancer le serveur et générer l'adresse publique d'accès à distance.
 
----
+### Compilation depuis les sources sous Windows
+**Prérequis** : CMake 3.22+ et MinGW-w64 ou Visual Studio 2022.
 
-## 3. Utilisation du Plugin
-
-1. Démarrer le serveur relais (`Lancer-Serveur.bat` ou `node server/src/server.js`).
-2. Charger le plugin dans FL Studio.
-3. Créer un salon ou rejoindre avec un code de session (ex: `XK4R-92`).
-4. Sélectionner le mode d'échange :
-   - **MIDI** : transmission des notes, vélocités et durées.
-   - **Rendu Audio** : transmission du signal audio WAV PCM.
-5. Valider les patterns pour les envoyer au collaborateur.
-6. Utiliser la liste déroulante pour rejouer les prises reçues dans l'historique.
-
----
-
-## 4. Compilation sous Windows
-
-### Prérequis
-- CMake 3.22+
-- MinGW-w64 ou Visual Studio 2022
-
-### Commandes
 ```powershell
 $env:PATH = "c:\Users\vhoeb\Desktop\CAMILLE CDL FL STUDIO\tools\w64devkit\bin;" + $env:PATH
 cd plugin
@@ -53,19 +40,48 @@ cmake --build build --config Release -j4
 
 Fichiers générés dans `plugin/build/FLStudioCollabPlugin_artefacts/Release/`.
 
----
+</details>
 
-## 5. Compilation sous macOS
+<br/>
 
-### Prérequis
-- Xcode (`xcode-select --install`)
-- CMake (`brew install cmake`)
+<details>
+<summary><b>🍎 macOS (Tutoriel d'installation & compilation)</b></summary>
 
-### Commandes
+<br/>
+
+### Formats générés sous macOS
+Sous macOS, la compilation génère automatiquement :
+- **VST3** (FL Studio macOS, Ableton Live, Cubase, Bitwig) -> `~/Library/Audio/Plug-Ins/VST3/`
+- **Audio Unit (AU)** (Logic Pro, GarageBand) -> `~/Library/Audio/Plug-Ins/Components/`
+- **Standalone** (Application autonome macOS `.app`)
+
+### Compilation depuis les sources sous macOS
+**Prérequis** : Xcode (`xcode-select --install`) et CMake (`brew install cmake`).
+
 ```bash
 cd plugin
 cmake -B build -G Xcode
 cmake --build build --config Release
 ```
 
-Génère les formats VST3, Audio Unit (AU pour Logic Pro) et Standalone.
+### Lancer le serveur relais sous macOS
+```bash
+cd server
+npm install
+npm start
+```
+
+</details>
+
+---
+
+## 3. Utilisation du Plugin
+
+1. Démarrer le serveur relais (`Lancer-Serveur-Internet.bat` ou `node server/src/server.js`).
+2. Charger le plugin dans FL Studio.
+3. Créer un salon ou rejoindre avec un code de session (ex: `XK4R-92`).
+4. Sélectionner le mode d'échange :
+   - **MIDI** : transmission des notes, vélocités et durées.
+   - **Rendu Audio** : transmission du signal audio WAV PCM.
+5. Valider les patterns pour les envoyer au collaborateur.
+6. Utiliser la liste déroulante pour rejouer les prises reçues dans l'historique.
