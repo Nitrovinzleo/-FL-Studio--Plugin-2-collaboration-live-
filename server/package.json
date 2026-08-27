@@ -1,0 +1,17 @@
+{
+  "name": "flstudio-collab-server",
+  "version": "1.0.0",
+  "description": "WebSocket relay server for FL Studio real-time collaboration plugin",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node test/test-client.js"
+  },
+  "keywords": ["flstudio", "vst3", "juce", "collaboration", "websocket", "midi"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
